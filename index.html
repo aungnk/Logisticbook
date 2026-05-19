@@ -669,7 +669,7 @@ function renderStep() {
     `<div class="dot ${i+1<fCur?'done':i+1===fCur?'on':''}"></div>`).join('');
   if(fCur===1) { const d=document.getElementById('fDate'); if(d) d.value=new Date().toISOString().split('T')[0]; }
   if(fCur===2) initS2();
-  if(fCur===3) renderCarriers();
+  if(fCur===3) { renderCarriers(); setTimeout(()=>{ updatePriceSummary(); updateFinalBox(); }, 80); }
 }
 
 /* Step 1 */
@@ -714,30 +714,39 @@ function step2Html(){
 
 function routeFieldsHtml(r){
   return `
+  <!-- ต้นทาง (ตั้งค่าไว้แล้ว) -->
   <div class="stitle"><div class="stitle-dot green"></div>ต้นทาง</div>
   <div class="qb">
     <div class="qlabel"><div class="qnum">2</div><div class="qtxt">ชื่อสถานที่ต้นทาง</div></div>
-    <input class="fi" type="text" id="fOrg${r}" placeholder="โรงงาน / คลังสินค้า...">
+    <input class="fi" type="text" id="fOrg${r}"
+      value="บจก.ภูมิใจไทยซีเมนต์ โรงงานปูนซีเมนต์ราชสีห์ สระบุรี"
+      placeholder="โรงงาน / คลังสินค้า...">
   </div>
   <div class="qb">
-    <div class="qlabel"><div class="qnum">3</div><div class="qtxt">พิกัด GPS ต้นทาง</div></div>
-    <div class="g2">
-      <div><div class="fi-lbl">Latitude</div><input class="fi" type="text" id="fLat1${r}" placeholder="14.8932"></div>
-      <div><div class="fi-lbl">Longitude</div><input class="fi" type="text" id="fLng1${r}" placeholder="100.9173"></div>
+    <div class="qlabel"><div class="qnum">3</div><div class="qtxt">Link Google Maps ต้นทาง</div></div>
+    <div class="map-row">
+      <input class="fi" type="url" id="fMapOrg${r}"
+        value="https://maps.app.goo.gl/jhEE8UuzeBY8PoYV7"
+        placeholder="https://maps.app.goo.gl/...">
+      <div class="map-open-btn" onclick="openMapOrgLink('${r}')" title="เปิดแผนที่ต้นทาง"><i class="ti ti-map-pin"></i></div>
     </div>
   </div>
+
+  <!-- ปลายทาง -->
   <div class="stitle"><div class="stitle-dot red"></div>ปลายทาง</div>
   <div class="qb">
-    <div class="qlabel"><div class="qnum">4</div><div class="qtxt">ชื่อสถานที่ปลายทาง</div></div>
-    <input class="fi" type="text" id="fDst${r}" placeholder="สำนักงาน / ไซต์งาน...">
+    <div class="qlabel"><div class="qnum">4</div><div class="qtxt">ชื่อสถานที่ปลายทาง <span class="req">*</span></div></div>
+    <input class="fi" type="text" id="fDst${r}" placeholder="สำนักงาน / ไซต์งาน / โกดัง...">
   </div>
   <div class="qb">
-    <div class="qlabel"><div class="qnum">5</div><div class="qtxt">พิกัด GPS ปลายทาง</div></div>
-    <div class="g2">
-      <div><div class="fi-lbl">Latitude</div><input class="fi" type="text" id="fLat2${r}" placeholder="13.7563"></div>
-      <div><div class="fi-lbl">Longitude</div><input class="fi" type="text" id="fLng2${r}" placeholder="100.5018"></div>
+    <div class="qlabel"><div class="qnum">5</div><div class="qtxt">Link Google Maps ปลายทาง</div></div>
+    <div class="map-row">
+      <input class="fi" type="url" id="fMap${r}" placeholder="https://maps.app.goo.gl/...">
+      <div class="map-open-btn" onclick="openMapLink('${r}')" title="เปิดแผนที่"><i class="ti ti-map-2"></i></div>
     </div>
   </div>
+
+  <!-- รายละเอียดเส้นทาง -->
   <div class="stitle"><i class="ti ti-road" style="font-size:12px"></i>รายละเอียดเส้นทาง ${r}</div>
   <div class="qb">
     <div class="qlabel"><div class="qnum">6</div><div class="qtxt">ระยะทาง / เวลา / ผ่าน</div></div>
@@ -746,13 +755,6 @@ function routeFieldsHtml(r){
       <input class="fi" type="text" id="fTime${r}" placeholder="เช่น 6 ชม. 54 น.">
     </div>
     <input class="fi" type="text" id="fVia${r}" placeholder="ผ่าน AH2 / ทางด่วน...">
-  </div>
-  <div class="qb">
-    <div class="qlabel"><div class="qnum">7</div><div class="qtxt">Link Google Maps</div></div>
-    <div class="map-row">
-      <input class="fi" type="url" id="fMap${r}" placeholder="https://maps.app.goo.gl/...">
-      <div class="map-open-btn" onclick="openMapLink('${r}')"><i class="ti ti-map-2"></i></div>
-    </div>
   </div>
   <div class="stitle"><i class="ti ti-photo" style="font-size:12px"></i>รูปภาพ — เส้นทาง ${r}</div>
   <div class="qb">
@@ -786,12 +788,15 @@ function switchR(r) {
   restoreRouteValues(r);
 }
 
-const R_FIELDS = ['Org','Lat1','Lng1','Dst','Lat2','Lng2','Km','Time','Via','Map'];
+const R_FIELDS = ['Org','MapOrg','Dst','Map','Km','Time','Via'];
 function saveRouteValues(r) {
   R_FIELDS.forEach(f=>{ const el=document.getElementById(`f${f}${r}`); if(el)fRouteData[r][f]=el.value; });
 }
 function restoreRouteValues(r) {
-  R_FIELDS.forEach(f=>{ const el=document.getElementById(`f${f}${r}`); if(el&&fRouteData[r][f]!==undefined)el.value=fRouteData[r][f]; });
+  R_FIELDS.forEach(f=>{
+    const el=document.getElementById(`f${f}${r}`);
+    if(el && fRouteData[r][f]!==undefined) el.value=fRouteData[r][f];
+  });
   const rL=r.toLowerCase();
   const tmA=document.getElementById(`tagsMap${r}`);
   if(tmA) tmA.innerHTML=fUps[`map${rL}`].map(f=>`<span class="ftag"><i class="ti ti-file" style="font-size:10px"></i> ${f}</span>`).join('');
@@ -801,7 +806,12 @@ function restoreRouteValues(r) {
 function openMapLink(r) {
   const el=document.getElementById(`fMap${r}`);
   if(el&&el.value) window.open(el.value,'_blank');
-  else alert('กรุณากรอก Link Google Maps ก่อน');
+  else alert('กรุณากรอก Link Google Maps ปลายทางก่อน');
+}
+function openMapOrgLink(r) {
+  const el=document.getElementById(`fMapOrg${r}`);
+  if(el&&el.value) window.open(el.value,'_blank');
+  else alert('กรุณากรอก Link Google Maps ต้นทางก่อน');
 }
 function handleUp(inp,tagsId,key) {
   const wrap=document.getElementById(tagsId); if(!wrap)return;
@@ -817,58 +827,211 @@ function handleUp(inp,tagsId,key) {
 /* Step 3 */
 function step3Html(){
   return `
+  <!-- ข้อ 1: กรอกราคาแต่ละเจ้า -->
   <div class="qb">
-    <div class="qlabel"><div class="qnum">1</div><div class="qtxt">ราคาที่ผู้ขนส่งเสนอ <span class="req">*</span></div></div>
-    <div class="qsub">พิมพ์ชื่อผู้ขนส่งและใส่ราคา — เพิ่มได้ไม่จำกัด</div>
+    <div class="qlabel"><div class="qnum">1</div><div class="qtxt">ราคาที่แต่ละผู้ขนส่งเสนอ <span class="req">*</span></div></div>
+    <div class="qsub">กรอกชื่อและราคาของผู้ขนส่งแต่ละราย เพิ่มได้ไม่จำกัด</div>
     <div class="carrier-list" id="carList"></div>
-    <button class="add-car-btn" onclick="addCarrier()"><i class="ti ti-plus" style="font-size:16px"></i> เพิ่มผู้ขนส่ง</button>
-    <div class="best-box" id="bestBox" style="display:none">
-      <div class="best-lbl" id="bestLbl">ราคาดีที่สุด</div>
-      <div><span class="best-val" id="bestVal">0</span> <span style="font-size:12px;color:var(--blue-dk)">฿</span></div>
+    <button class="add-car-btn" onclick="addCarrier()">
+      <i class="ti ti-plus" style="font-size:16px"></i> เพิ่มผู้ขนส่ง
+    </button>
+  </div>
+
+  <!-- ข้อ 2: ตารางสรุปเปรียบเทียบ -->
+  <div class="qb">
+    <div class="qlabel"><div class="qnum">2</div><div class="qtxt">ตารางเปรียบเทียบราคา</div></div>
+    <div id="cmpTable" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);overflow:hidden">
+      <!-- header -->
+      <div style="display:grid;grid-template-columns:28px 1fr 90px 72px;gap:0;background:var(--navy);padding:7px 12px">
+        <div style="font-size:10px;font-weight:700;color:#A3D9C9">#</div>
+        <div style="font-size:10px;font-weight:700;color:#A3D9C9">ผู้ขนส่ง</div>
+        <div style="font-size:10px;font-weight:700;color:#A3D9C9;text-align:right">ราคา (฿)</div>
+        <div style="font-size:10px;font-weight:700;color:#A3D9C9;text-align:right">ส่วนต่าง</div>
+      </div>
+      <div id="cmpRows"></div>
+      <!-- สถิติ -->
+      <div id="cmpStats" style="background:#F0F6F4;border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:12px;flex-wrap:wrap"></div>
+    </div>
+    <div id="cmpEmpty" style="padding:14px;text-align:center;color:var(--text2);font-size:13px;background:var(--bg);border-radius:var(--rs);border:1px dashed var(--border)">
+      <i class="ti ti-table" style="font-size:22px;display:block;margin:0 auto 6px;color:#C4D5CF"></i>
+      กรอกราคาผู้ขนส่งด้านบนเพื่อดูตารางเปรียบเทียบ
     </div>
   </div>
+
+  <!-- ข้อ 3: ราคาสรุปที่ใช้ -->
   <div class="qb">
-    <div class="qlabel"><div class="qnum">2</div><div class="qtxt">ราคาน้ำมัน ณ วันที่ทำราคา</div></div>
+    <div class="qlabel"><div class="qnum">3</div><div class="qtxt">ราคาที่ใช้ (ราคาสรุป)</div></div>
+    <div class="qsub">ระบุราคาที่ตกลงใช้จริง อาจเป็นราคากลาง ราคาที่ต่อรองได้ หรือราคาดีที่สุด</div>
+    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden">
+      <!-- ปุ่มลัด -->
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--text2)">เลือกอัตโนมัติ:</span>
+        <button onclick="setFinalPrice('best')" style="font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--green-lt);color:var(--navy);cursor:pointer">ราคาต่ำสุด</button>
+        <button onclick="setFinalPrice('avg')"  style="font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--blue-lt);color:var(--blue-dk);cursor:pointer">ราคากลาง</button>
+        <button onclick="setFinalPrice('max')"  style="font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#F3F4F6;color:var(--text2);cursor:pointer">ราคาสูงสุด</button>
+      </div>
+      <!-- input ราคาสรุป -->
+      <div style="padding:10px 12px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500">ผู้ขนส่งที่เลือก</div>
+        <input class="fi" type="text" id="fFinalCarrier" placeholder="ระบุชื่อผู้ขนส่งที่ตกลงใช้..." style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500">ราคาที่ใช้ (฿) <span style="color:#E24B4A">*</span></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input class="fi" type="number" id="fFinalPrice" placeholder="0" oninput="updateFinalBox()" style="flex:1;font-size:18px;font-weight:700;color:var(--navy)">
+          <span style="font-size:15px;color:var(--text2);font-weight:500;flex-shrink:0">฿</span>
+        </div>
+      </div>
+      <!-- กล่องสรุปท้าย -->
+      <div id="finalBox" style="display:none;background:var(--navy);padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:10px;color:#A3D9C9;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px">ราคาสรุปที่ใช้</div>
+          <div style="font-size:12px;color:#fff;font-weight:600" id="finalCarrierDisp">—</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span style="font-size:26px;font-weight:700;color:#fff" id="finalPriceDisp">0</span>
+          <span style="font-size:13px;color:#A3D9C9">฿</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qb">
+    <div class="qlabel"><div class="qnum">4</div><div class="qtxt">ราคาน้ำมัน ณ วันที่ทำราคา</div></div>
     <div class="g2">
       <input class="fi" type="number" id="fFuel" placeholder="ราคา (฿/ลิตร)" step="0.01">
-      <select class="fi" id="fFuelType"><option>ดีเซล B7</option><option>ดีเซล B20</option><option>เบนซิน 91</option><option>เบนซิน 95</option><option>E20</option></select>
+      <select class="fi" id="fFuelType">
+        <option>ดีเซล B7</option><option>ดีเซล B20</option>
+        <option>เบนซิน 91</option><option>เบนซิน 95</option><option>E20</option>
+      </select>
     </div>
   </div>
   <div class="qb" style="margin-bottom:0">
-    <div class="qlabel"><div class="qnum">3</div><div class="qtxt">หมายเหตุ / เงื่อนไขพิเศษ</div></div>
+    <div class="qlabel"><div class="qnum">5</div><div class="qtxt">หมายเหตุ / เงื่อนไขพิเศษ</div></div>
     <textarea class="fi ta" id="fNotes" placeholder="ข้อตกลง เงื่อนไข ปัญหาที่พบ..."></textarea>
   </div>`;
 }
 
 function renderCarriers() {
-  const list=document.getElementById('carList'); if(!list)return;
-  list.innerHTML=fCarriers.map((c,i)=>`
+  const list = document.getElementById('carList'); if(!list) return;
+  list.innerHTML = fCarriers.map((c,i) => `
   <div class="car-row" id="crow-${c.id}">
     <div class="car-idx">${i+1}</div>
     <div class="car-fields">
-      <div class="car-name"><input class="fi" type="text" id="cname-${c.id}" value="${c.name}" placeholder="ชื่อผู้ขนส่ง..." oninput="updateCarrier(${c.id},'name',this.value)"></div>
-      <div class="car-price"><input class="fi" type="number" id="cprice-${c.id}" value="${c.price}" placeholder="ราคา (฿)" oninput="updateCarrier(${c.id},'price',this.value)"></div>
+      <div class="car-name">
+        <input class="fi" type="text" id="cname-${c.id}" value="${c.name}"
+          placeholder="ชื่อผู้ขนส่ง..." oninput="updateCarrier(${c.id},'name',this.value)">
+      </div>
+      <div class="car-price">
+        <input class="fi" type="number" id="cprice-${c.id}" value="${c.price}"
+          placeholder="ราคา (฿)" oninput="updateCarrier(${c.id},'price',this.value)">
+      </div>
     </div>
-    ${fCarriers.length>1?`<button class="car-del" onclick="removeCarrier(${c.id})"><i class="ti ti-x" style="font-size:15px"></i></button>`:'<div style="width:32px"></div>'}
+    ${fCarriers.length>1
+      ? `<button class="car-del" onclick="removeCarrier(${c.id})"><i class="ti ti-x" style="font-size:15px"></i></button>`
+      : '<div style="width:32px"></div>'}
   </div>`).join('');
-  updateBestPrice();
+  updatePriceSummary();
 }
-function updateCarrier(id,field,val) {
-  const c=fCarriers.find(x=>x.id===id); if(c){c[field]=val; if(field==='price')updateBestPrice();}
+
+function updateCarrier(id, field, val) {
+  const c = fCarriers.find(x=>x.id===id);
+  if(c) { c[field]=val; updatePriceSummary(); }
 }
 function addCarrier() {
-  fCarriers.push({id:fCarIdSeq++,name:'',price:''}); renderCarriers();
-  setTimeout(()=>document.getElementById('cname-'+(fCarIdSeq-1))?.focus(),60);
+  fCarriers.push({id:fCarIdSeq++, name:'', price:''});
+  renderCarriers();
+  setTimeout(()=>document.getElementById('cname-'+(fCarIdSeq-1))?.focus(), 60);
 }
-function removeCarrier(id) { fCarriers=fCarriers.filter(x=>x.id!==id); renderCarriers(); }
-function updateBestPrice() {
-  const priced=fCarriers.filter(c=>+c.price>0);
-  const box=document.getElementById('bestBox'); if(!box)return;
-  if(!priced.length){box.style.display='none';return;}
-  const best=priced.reduce((a,b)=>+a.price<+b.price?a:b);
-  box.style.display='flex';
-  document.getElementById('bestLbl').textContent=`ราคาดีที่สุด — ${best.name||'ไม่ระบุ'}`;
-  document.getElementById('bestVal').textContent=fmtN(Math.round(+best.price));
+function removeCarrier(id) {
+  fCarriers = fCarriers.filter(x=>x.id!==id);
+  renderCarriers();
+}
+
+function updatePriceSummary() {
+  const priced  = fCarriers.filter(c=>+c.price>0);
+  const cmpTbl  = document.getElementById('cmpTable');
+  const cmpEmp  = document.getElementById('cmpEmpty');
+  if(!cmpTbl||!cmpEmp) return;
+
+  if(!priced.length) {
+    cmpTbl.style.display='none';
+    cmpEmp.style.display='block';
+    return;
+  }
+  cmpTbl.style.display='block';
+  cmpEmp.style.display='none';
+
+  const sorted = [...priced].sort((a,b)=>+a.price-+b.price);
+  const best   = +sorted[0].price;
+  const avg    = Math.round(priced.reduce((s,c)=>s+(+c.price),0)/priced.length);
+  const max    = +sorted[sorted.length-1].price;
+
+  // rows
+  const rowsEl = document.getElementById('cmpRows');
+  if(rowsEl) {
+    rowsEl.innerHTML = sorted.map((c,i)=>{
+      const diff = +c.price - best;
+      const isB  = i===0;
+      return `<div style="display:grid;grid-template-columns:28px 1fr 90px 72px;gap:0;padding:8px 12px;border-bottom:1px solid var(--border);background:${isB?'rgba(42,123,103,.05)':'var(--card)'};align-items:center">
+        <div style="width:18px;height:18px;border-radius:4px;background:${isB?'var(--navy)':'var(--blue-lt)'};color:${isB?'#fff':'var(--blue-dk)'};font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center">${i+1}</div>
+        <div style="font-size:13px;font-weight:${isB?'700':'500'};color:var(--text);padding:0 6px;display:flex;align-items:center;gap:5px">
+          ${c.name||'ไม่ระบุ'}
+          ${isB?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;background:var(--green-lt);color:var(--navy)">ต่ำสุด</span>':''}
+        </div>
+        <div style="font-size:13px;font-weight:700;color:${isB?'var(--navy)':'var(--text)'};text-align:right">${fmtN(Math.round(+c.price))}</div>
+        <div style="font-size:11px;color:${diff?'#C0392B':'var(--navy)'};text-align:right;font-weight:600">${diff?'+'+fmtN(Math.round(diff)):'-'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // stats
+  const statsEl = document.getElementById('cmpStats');
+  if(statsEl) {
+    statsEl.innerHTML = [
+      {lbl:'ราคาต่ำสุด', val:fmtN(best), col:'var(--navy)'},
+      {lbl:'ราคากลาง',   val:fmtN(avg),  col:'var(--blue-dk)'},
+      {lbl:'ราคาสูงสุด', val:fmtN(max),  col:'#8B4513'},
+      {lbl:'จำนวนเจ้า',  val:`${priced.length} ราย`, col:'var(--text2)'},
+    ].map(s=>`
+      <div style="flex:1;min-width:60px">
+        <div style="font-size:10px;color:var(--text2);font-weight:500">${s.lbl}</div>
+        <div style="font-size:13px;font-weight:700;color:${s.col}">${s.val}</div>
+      </div>`).join('');
+  }
+
+  updateFinalBox();
+}
+
+function setFinalPrice(mode) {
+  const priced = fCarriers.filter(c=>+c.price>0);
+  if(!priced.length) return;
+  const sorted = [...priced].sort((a,b)=>+a.price-+b.price);
+  let price, carrier;
+  if(mode==='best') { price=+sorted[0].price; carrier=sorted[0].name; }
+  else if(mode==='max') { price=+sorted[sorted.length-1].price; carrier=sorted[sorted.length-1].name; }
+  else { price=Math.round(priced.reduce((s,c)=>s+(+c.price),0)/priced.length); carrier='ราคากลาง'; }
+  const fp=document.getElementById('fFinalPrice');
+  const fc=document.getElementById('fFinalCarrier');
+  if(fp) fp.value=price;
+  if(fc && mode!=='avg') fc.value=carrier;
+  if(fc && mode==='avg') fc.value='';
+  updateFinalBox();
+}
+
+function updateFinalBox() {
+  const fp  = document.getElementById('fFinalPrice');
+  const fc  = document.getElementById('fFinalCarrier');
+  const box = document.getElementById('finalBox');
+  const nd  = document.getElementById('finalCarrierDisp');
+  const vd  = document.getElementById('finalPriceDisp');
+  if(!fp||!box) return;
+  const val = +fp.value;
+  if(val>0) {
+    box.style.display='flex';
+    if(nd) nd.textContent = fc?.value||'—';
+    if(vd) vd.textContent = fmtN(Math.round(val));
+  } else {
+    box.style.display='none';
+  }
 }
 
 /* nav */
@@ -902,17 +1065,17 @@ async function saveEntry() {
     address: document.getElementById('fAddress')?.value || '',
     contact: document.getElementById('fContact')?.value || '',
     phone:   document.getElementById('fPhone')?.value   || '',
-    orgA:  fRouteData.A.Org||'', dstA:  fRouteData.A.Dst||'',
-    lat1A: fRouteData.A.Lat1||'', lng1A: fRouteData.A.Lng1||'',
-    lat2A: fRouteData.A.Lat2||'', lng2A: fRouteData.A.Lng2||'',
-    kmA:   fRouteData.A.Km||'',  timeA: fRouteData.A.Time||'',
-    viaA:  fRouteData.A.Via||'', mapA:  fRouteData.A.Map||'',
-    orgB:  fRouteData.B.Org||'', dstB:  fRouteData.B.Dst||'',
-    lat1B: fRouteData.B.Lat1||'', lng1B: fRouteData.B.Lng1||'',
-    lat2B: fRouteData.B.Lat2||'', lng2B: fRouteData.B.Lng2||'',
-    kmB:   fRouteData.B.Km||'',  timeB: fRouteData.B.Time||'',
-    viaB:  fRouteData.B.Via||'', mapB:  fRouteData.B.Map||'',
+    orgA:  fRouteData.A.Org||'',    dstA:  fRouteData.A.Dst||'',
+    mapOrgA: fRouteData.A.MapOrg||'https://maps.app.goo.gl/jhEE8UuzeBY8PoYV7',
+    kmA:   fRouteData.A.Km||'',    timeA: fRouteData.A.Time||'',
+    viaA:  fRouteData.A.Via||'',   mapA:  fRouteData.A.Map||'',
+    orgB:  fRouteData.B.Org||'',   dstB:  fRouteData.B.Dst||'',
+    mapOrgB: fRouteData.B.MapOrg||'https://maps.app.goo.gl/jhEE8UuzeBY8PoYV7',
+    kmB:   fRouteData.B.Km||'',    timeB: fRouteData.B.Time||'',
+    viaB:  fRouteData.B.Via||'',   mapB:  fRouteData.B.Map||'',
     carriers: fCarriers.filter(c=>c.name||+c.price>0).map(c=>({name:c.name,price:+c.price})),
+    finalCarrier: document.getElementById('fFinalCarrier')?.value || '',
+    finalPrice:   +(document.getElementById('fFinalPrice')?.value)  || 0,
     fuel:     document.getElementById('fFuel')?.value     || '',
     fuelType: document.getElementById('fFuelType')?.value || 'ดีเซล B7',
     notes:    document.getElementById('fNotes')?.value    || '',
