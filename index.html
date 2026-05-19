@@ -468,31 +468,7 @@ function showSyncBadge(text, ok) {
   badge.style.color = ok ? '#2A7B67' : '#8A5700';
 }
 
-/* seed sample data if empty */
-function seedIfEmpty() {
-  if (dbLoad().length > 0) return;
-  dbSave([
-    {id:'seed1',agency:'บริษัท เครือแสงอรุณวัสดุ จำกัด',date:'2026-05-19',status:'รอดำเนินการ',
-     address:'159 ถ.หินช้อน ต.หินช้อน อ.แก่งคอย สระบุรี 18110',
-     contact:'คุณสมชาย ใจดี',phone:'089-123-4567',
-     orgA:'บมจ.ภูมิใจไทยซีเมนต์ (สระบุรี)',dstA:'สำนักงานใหญ่ กทม.',
-     kmA:'472',timeA:'6 ชม. 54 นาที',viaA:'AH2',mapA:'https://maps.app.goo.gl/CCZhdSFEoRsC2rZf6',
-     orgB:'บมจ.ภูมิใจไทยซีเมนต์ (สระบุรี)',dstB:'สำนักงานใหญ่ กทม.',
-     kmB:'443',timeB:'6 ชม. 2 นาที',viaB:'AH2',mapB:'https://maps.app.goo.gl/CCZhdSFEoRsC2rZf6',
-     carriers:[{name:'ผู้ขนส่ง A',price:15000},{name:'ผู้ขนส่ง B',price:14500},{name:'ไทยออยล์ทรานสปอร์ต',price:16200}],
-     fuel:'33.59',fuelType:'ดีเซล B7',
-     notes:'เส้นทาง A ผ่านด่านเก็บค่าผ่านทาง / B สั้นกว่า 29 กม.',
-     filesMapA:['แผนที่_A.jpg'],filesMapB:['แผนที่_B.jpg'],filesSite:['หน้างาน_01.jpg','ใบเสนอราคา.pdf']},
-    {id:'seed2',agency:'ห้างหุ้นส่วนจำกัด สยามวัสดุก่อสร้าง',date:'2026-05-17',status:'อนุมัติแล้ว',
-     address:'45/2 ถ.พหลโยธิน อ.เมือง ปทุมธานี',
-     contact:'คุณวิชัย ทองดี',phone:'062-456-7890',
-     orgA:'โรงปูนนครหลวง (อยุธยา)',dstA:'โกดังปทุมธานี',
-     kmA:'68',timeA:'1 ชม. 20 นาที',viaA:'ทางหลวง 347',mapA:'',
-     carriers:[{name:'ผู้ขนส่ง A',price:4500},{name:'สหมิตรขนส่ง',price:4200}],
-     fuel:'33.59',fuelType:'ดีเซล B7',notes:'',
-     filesMapA:['map_pathumthani.jpg'],filesMapB:[],filesSite:['site_01.jpg']},
-  ]);
-}
+
 
 /* ═══════════════════════════════════════
    HELPERS
@@ -972,10 +948,11 @@ async function saveEntry() {
 /* ═══════════════════════════════════════
    INIT
 ═══════════════════════════════════════ */
-seedIfEmpty();
+// ล้าง localStorage เก่า (ลบข้อมูลตัวอย่าง)
+localStorage.removeItem(DB_KEY);
 updateStats();
 renderCards();
-// โหลดข้อมูลจาก Google Sheets (ถ้าตั้งค่า SCRIPT_URL แล้ว)
+// โหลดข้อมูลจาก Google Sheets
 syncFromSheets();
 </script>
 </body>
