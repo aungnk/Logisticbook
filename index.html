@@ -645,10 +645,32 @@ let fRouteData = {A:{}, B:{}};
 let fUps = {mapA:[], mapB:[], site:[]};
 let fCarriers = [{id:1,name:'ผู้ขนส่ง A',price:''}];
 let fCarIdSeq = 2;
+// เก็บค่าหน้า 1 ไว้ใน memory เพราะ DOM สลับหน้า
+let fStep1 = {agency:'',date:'',status:'รอดำเนินการ',address:'',contact:'',phone:''};
+// เก็บค่าหน้า 3
+let fStep3 = {finalCarrier:'',finalPrice:0,fuel:'',fuelType:'ดีเซล B7',notes:''};
+
+function saveStep1Values() {
+  fStep1.agency  = document.getElementById('fAgency')?.value.trim()  || fStep1.agency;
+  fStep1.date    = document.getElementById('fDate')?.value           || fStep1.date;
+  fStep1.status  = document.getElementById('fStatus')?.value         || fStep1.status;
+  fStep1.address = document.getElementById('fAddress')?.value        || fStep1.address;
+  fStep1.contact = document.getElementById('fContact')?.value        || fStep1.contact;
+  fStep1.phone   = document.getElementById('fPhone')?.value          || fStep1.phone;
+}
+function saveStep3Values() {
+  fStep3.finalCarrier = document.getElementById('fFinalCarrier')?.value || fStep3.finalCarrier;
+  fStep3.finalPrice   = +(document.getElementById('fFinalPrice')?.value) || fStep3.finalPrice;
+  fStep3.fuel         = document.getElementById('fFuel')?.value          || fStep3.fuel;
+  fStep3.fuelType     = document.getElementById('fFuelType')?.value      || fStep3.fuelType;
+  fStep3.notes        = document.getElementById('fNotes')?.value         || fStep3.notes;
+}
 
 function goForm() {
   fCur=1; fRouteSel='A'; fRouteData={A:{},B:{}}; fUps={mapA:[],mapB:[],site:[]};
   fCarriers=[{id:1,name:'ผู้ขนส่ง A',price:''}]; fCarIdSeq=2;
+  fStep1={agency:'',date:'',status:'รอดำเนินการ',address:'',contact:'',phone:''};
+  fStep3={finalCarrier:'',finalPrice:0,fuel:'',fuelType:'ดีเซล B7',notes:''};
   showPage('pgForm');
   renderStep();
 }
@@ -667,7 +689,15 @@ function renderStep() {
   const dots = document.getElementById('fDots');
   dots.innerHTML = Array.from({length:F_STEPS},(_,i)=>
     `<div class="dot ${i+1<fCur?'done':i+1===fCur?'on':''}"></div>`).join('');
-  if(fCur===1) { const d=document.getElementById('fDate'); if(d) d.value=new Date().toISOString().split('T')[0]; }
+
+  if(fCur===1) {
+    // ตั้งวันที่ default และ restore ค่าเดิม
+    const d=document.getElementById('fDate');
+    if(d) d.value = fStep1.date || new Date().toISOString().split('T')[0];
+    if(!fStep1.date) fStep1.date = document.getElementById('fDate')?.value;
+    const fields=[['fAgency','agency'],['fStatus','status'],['fAddress','address'],['fContact','contact'],['fPhone','phone']];
+    fields.forEach(([id,key])=>{ const el=document.getElementById(id); if(el&&fStep1[key]) el.value=fStep1[key]; });
+  }
   if(fCur===2) initS2();
   if(fCur===3) { renderCarriers(); setTimeout(()=>{ updatePriceSummary(); updateFinalBox(); }, 80); }
 }
@@ -1036,9 +1066,15 @@ function updateFinalBox() {
 
 /* nav */
 function fStepNav(d) {
-  if(d===1&&fCur===1&&!document.getElementById('fAgency')?.value.trim()){fToast('กรุณาระบุชื่อหน่วยงานก่อน','err');return}
+  // บันทึกค่าก่อนสลับหน้า
+  if(fCur===1) saveStep1Values();
+  if(fCur===3) saveStep3Values();
+
+  // validate
+  if(d===1&&fCur===1&&!fStep1.agency){fToast('กรุณาระบุชื่อหน่วยงานก่อน','err');return}
   if(d===1&&fCur===2){saveRouteValues(fRouteSel);}
   if(d===1&&fCur===3&&!fCarriers.some(c=>+c.price>0)){fToast('กรุณาระบุราคาอย่างน้อย 1 ราย','err');return}
+
   fCur=Math.max(1,Math.min(F_STEPS,fCur+d));
   renderStep();
 }
@@ -1053,32 +1089,36 @@ function fToast(msg,type='ok') {
 
 /* SAVE */
 async function saveEntry() {
-  const agency = document.getElementById('fAgency')?.value.trim()||'';
-  if(!agency){ fToast('กรุณาระบุชื่อหน่วยงาน','err'); return; }
+  // บันทึกค่าหน้า 3 ก่อน (อยู่หน้านี้อยู่)
+  saveStep3Values();
+
+  const agency = fStep1.agency;
+  if(!agency){ fToast('ไม่พบชื่อหน่วยงาน กรุณากลับไปกรอกหน้า 1','err'); return; }
+
   fToast('กำลังบันทึก...', 'ok');
 
   const entry = {
     id:      uid(),
     agency,
-    date:    document.getElementById('fDate')?.value    || '',
-    status:  document.getElementById('fStatus')?.value  || 'รอดำเนินการ',
-    address: document.getElementById('fAddress')?.value || '',
-    contact: document.getElementById('fContact')?.value || '',
-    phone:   document.getElementById('fPhone')?.value   || '',
-    orgA:  fRouteData.A.Org||'',    dstA:  fRouteData.A.Dst||'',
+    date:    fStep1.date    || '',
+    status:  fStep1.status  || 'รอดำเนินการ',
+    address: fStep1.address || '',
+    contact: fStep1.contact || '',
+    phone:   fStep1.phone   || '',
+    orgA:    fRouteData.A.Org   ||'', dstA:    fRouteData.A.Dst   ||'',
     mapOrgA: fRouteData.A.MapOrg||'https://maps.app.goo.gl/jhEE8UuzeBY8PoYV7',
-    kmA:   fRouteData.A.Km||'',    timeA: fRouteData.A.Time||'',
-    viaA:  fRouteData.A.Via||'',   mapA:  fRouteData.A.Map||'',
-    orgB:  fRouteData.B.Org||'',   dstB:  fRouteData.B.Dst||'',
+    kmA:     fRouteData.A.Km    ||'', timeA:   fRouteData.A.Time  ||'',
+    viaA:    fRouteData.A.Via   ||'', mapA:    fRouteData.A.Map   ||'',
+    orgB:    fRouteData.B.Org   ||'', dstB:    fRouteData.B.Dst   ||'',
     mapOrgB: fRouteData.B.MapOrg||'https://maps.app.goo.gl/jhEE8UuzeBY8PoYV7',
-    kmB:   fRouteData.B.Km||'',    timeB: fRouteData.B.Time||'',
-    viaB:  fRouteData.B.Via||'',   mapB:  fRouteData.B.Map||'',
-    carriers: fCarriers.filter(c=>c.name||+c.price>0).map(c=>({name:c.name,price:+c.price})),
-    finalCarrier: document.getElementById('fFinalCarrier')?.value || '',
-    finalPrice:   +(document.getElementById('fFinalPrice')?.value)  || 0,
-    fuel:     document.getElementById('fFuel')?.value     || '',
-    fuelType: document.getElementById('fFuelType')?.value || 'ดีเซล B7',
-    notes:    document.getElementById('fNotes')?.value    || '',
+    kmB:     fRouteData.B.Km    ||'', timeB:   fRouteData.B.Time  ||'',
+    viaB:    fRouteData.B.Via   ||'', mapB:    fRouteData.B.Map   ||'',
+    carriers:     fCarriers.filter(c=>c.name||+c.price>0).map(c=>({name:c.name,price:+c.price})),
+    finalCarrier: fStep3.finalCarrier || '',
+    finalPrice:   fStep3.finalPrice   || 0,
+    fuel:         fStep3.fuel         || '',
+    fuelType:     fStep3.fuelType     || 'ดีเซล B7',
+    notes:        fStep3.notes        || '',
     filesMapA: [...fUps.mapA],
     filesMapB: [...fUps.mapB],
     filesSite: [...fUps.site],
