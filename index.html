@@ -527,10 +527,12 @@ function renderCards() {
   }
 
   grid.innerHTML = fl.map((e,i) => {
-    const best = bestC(e.carriers);
+    const finalP = e.finalPrice && +e.finalPrice > 0;
+    const dispPrice = finalP ? fmtN(e.finalPrice)+' ฿' : (bestC(e.carriers) ? fmtN(bestC(e.carriers).price)+' ฿' : '—');
     const km   = [e.kmA?`A: ${e.kmA} กม.`:'', e.kmB?`B: ${e.kmB} กม.`:''].filter(Boolean).join(' · ');
     const route = e.orgA&&e.dstA ? `${e.orgA} → ${e.dstA}` : 'ยังไม่ระบุเส้นทาง';
     const pics  = (e.filesMapA?.length||0)+(e.filesMapB?.length||0)+(e.filesSite?.length||0);
+    const nCar  = (e.carriers||[]).filter(c=>+c.price>0).length;
     return `<div class="shop-card" onclick="openDetail('${e.id}')" style="animation-delay:${i*.05}s">
       <div class="sc-top">
         <div class="sc-avatar">${getInit(e.agency)}</div>
@@ -540,13 +542,12 @@ function renderCards() {
         </div>
       </div>
       <div class="sc-pr">
-        <div class="sc-price">${best ? fmtN(best.price)+' ฿' : '—'}</div>
+        <div class="sc-price">${dispPrice}</div>
         <div class="sc-date">${e.date||''}</div>
       </div>
       ${km?`<div class="sc-km"><i class="ti ti-road" style="font-size:11px"></i> ${km}</div>`:''}
       <div class="sc-tags">
-        ${(e.carriers||[]).slice(0,2).map(c=>`<span class="tag t-blue">${c.name}: ${fmtN(c.price)}฿</span>`).join('')}
-        ${(e.carriers||[]).length>2?`<span class="tag t-gray">+${e.carriers.length-2}</span>`:''}
+        ${nCar?`<span class="tag t-blue"><i class="ti ti-truck" style="font-size:10px"></i> ${nCar} ผู้ขนส่ง</span>`:''}
         <span class="tag ${sCls(e.status)}">${e.status||'—'}</span>
         ${pics?`<span class="tag t-amber"><i class="ti ti-photo" style="font-size:10px"></i> ${pics}</span>`:''}
       </div>
@@ -888,32 +889,31 @@ function step3Html(){
     </div>
   </div>
 
-  <!-- ข้อ 3: ราคาสรุปที่ใช้ -->
+  <!-- ข้อ 3: ราคาสรุปที่วิ่ง -->
   <div class="qb">
-    <div class="qlabel"><div class="qnum">3</div><div class="qtxt">ราคาที่ใช้ (ราคาสรุป)</div></div>
-    <div class="qsub">ระบุราคาที่ตกลงใช้จริง อาจเป็นราคากลาง ราคาที่ต่อรองได้ หรือราคาดีที่สุด</div>
-    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--rs);overflow:hidden">
-      <!-- ปุ่มลัด -->
-      <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <span style="font-size:11px;color:var(--text2)">เลือกอัตโนมัติ:</span>
-        <button onclick="setFinalPrice('best')" style="font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--green-lt);color:var(--navy);cursor:pointer">ราคาต่ำสุด</button>
-        <button onclick="setFinalPrice('avg')"  style="font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--blue-lt);color:var(--blue-dk);cursor:pointer">ราคากลาง</button>
-        <button onclick="setFinalPrice('max')"  style="font-family:'Sarabun',sans-serif;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#F3F4F6;color:var(--text2);cursor:pointer">ราคาสูงสุด</button>
+    <div class="qlabel"><div class="qnum">3</div><div class="qtxt">สรุปราคาที่ใช้วิ่ง</div></div>
+    <div class="qsub">ระบุราคาและผู้ขนส่งที่จะใช้จริง — ไม่จำเป็นต้องเป็นราคาถูกที่สุด</div>
+    <div style="background:var(--card);border:1.5px solid var(--border);border-radius:var(--rs);padding:12px">
+      <div class="fld" style="margin-bottom:10px">
+        <div class="fi-lbl">ผู้ขนส่งที่เลือกวิ่ง</div>
+        <input class="fi" type="text" id="fFinalCarrier"
+          placeholder="ระบุชื่อผู้ขนส่งที่ตกลงใช้..."
+          oninput="updateFinalBox()">
       </div>
-      <!-- input ราคาสรุป -->
-      <div style="padding:10px 12px">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500">ผู้ขนส่งที่เลือก</div>
-        <input class="fi" type="text" id="fFinalCarrier" placeholder="ระบุชื่อผู้ขนส่งที่ตกลงใช้..." style="margin-bottom:8px">
-        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500">ราคาที่ใช้ (฿) <span style="color:#E24B4A">*</span></div>
+      <div class="fld">
+        <div class="fi-lbl">ราคาสรุปที่วิ่ง (฿)</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <input class="fi" type="number" id="fFinalPrice" placeholder="0" oninput="updateFinalBox()" style="flex:1;font-size:18px;font-weight:700;color:var(--navy)">
-          <span style="font-size:15px;color:var(--text2);font-weight:500;flex-shrink:0">฿</span>
+          <input class="fi" type="number" id="fFinalPrice"
+            placeholder="0"
+            oninput="updateFinalBox()"
+            style="font-size:20px;font-weight:700;color:var(--navy);flex:1">
+          <span style="font-size:16px;color:var(--text2);font-weight:500;flex-shrink:0">฿</span>
         </div>
       </div>
-      <!-- กล่องสรุปท้าย -->
-      <div id="finalBox" style="display:none;background:var(--navy);padding:11px 14px;display:flex;align-items:center;justify-content:space-between">
+      <!-- กล่องยืนยัน -->
+      <div id="finalBox" style="display:none;margin-top:10px;background:var(--navy);border-radius:var(--rs);padding:10px 14px;flex-direction:row;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:10px;color:#A3D9C9;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px">ราคาสรุปที่ใช้</div>
+          <div style="font-size:10px;color:#A3D9C9;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px">ราคาสรุปที่วิ่ง</div>
           <div style="font-size:12px;color:#fff;font-weight:600" id="finalCarrierDisp">—</div>
         </div>
         <div style="display:flex;align-items:baseline;gap:4px">
@@ -1031,22 +1031,6 @@ function updatePriceSummary() {
   updateFinalBox();
 }
 
-function setFinalPrice(mode) {
-  const priced = fCarriers.filter(c=>+c.price>0);
-  if(!priced.length) return;
-  const sorted = [...priced].sort((a,b)=>+a.price-+b.price);
-  let price, carrier;
-  if(mode==='best') { price=+sorted[0].price; carrier=sorted[0].name; }
-  else if(mode==='max') { price=+sorted[sorted.length-1].price; carrier=sorted[sorted.length-1].name; }
-  else { price=Math.round(priced.reduce((s,c)=>s+(+c.price),0)/priced.length); carrier='ราคากลาง'; }
-  const fp=document.getElementById('fFinalPrice');
-  const fc=document.getElementById('fFinalCarrier');
-  if(fp) fp.value=price;
-  if(fc && mode!=='avg') fc.value=carrier;
-  if(fc && mode==='avg') fc.value='';
-  updateFinalBox();
-}
-
 function updateFinalBox() {
   const fp  = document.getElementById('fFinalPrice');
   const fc  = document.getElementById('fFinalCarrier');
@@ -1055,12 +1039,12 @@ function updateFinalBox() {
   const vd  = document.getElementById('finalPriceDisp');
   if(!fp||!box) return;
   const val = +fp.value;
-  if(val>0) {
-    box.style.display='flex';
-    if(nd) nd.textContent = fc?.value||'—';
+  if(val > 0) {
+    box.style.display = 'flex';
+    if(nd) nd.textContent = fc?.value || '—';
     if(vd) vd.textContent = fmtN(Math.round(val));
   } else {
-    box.style.display='none';
+    box.style.display = 'none';
   }
 }
 
